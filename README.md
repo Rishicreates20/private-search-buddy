@@ -9,6 +9,9 @@ url : https://private-search-buddy.vercel.app/
 ## 🏗️ System Architecture & Workflow
 
 ![Veilo Architecture Diagram]
+<img width="1408" height="768" alt="image" src="https://github.com/user-attachments/assets/ad9554b1-afa3-44f4-9e67-c0a2aa637a52" />
+
+
 
 
 ### How It Works – Step by Step
