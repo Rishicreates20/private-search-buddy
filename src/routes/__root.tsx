@@ -111,7 +111,7 @@ const NO_FLASH_THEME_SCRIPT = `(function(){try{var s=localStorage.getItem("veilo
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }} />
         <HeadContent />
