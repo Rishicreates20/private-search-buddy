@@ -263,10 +263,13 @@ async function serperImageSearch(
 async function openverseImageSearch(q: string): Promise<ImageResult[]> {
   try {
     const res = await fetch(
-      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=24`,
+      `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=20`,
       { headers: { "User-Agent": UA, Accept: "application/json" } },
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`Openverse image search failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+      return [];
+    }
     const data = (await res.json()) as {
       results?: Array<{
         title?: string;
@@ -285,7 +288,8 @@ async function openverseImageSearch(q: string): Promise<ImageResult[]> {
         source: r.source ?? hostOf(r.foreign_landing_url ?? ""),
       }))
       .filter((r) => r.imageUrl);
-  } catch {
+  } catch (err) {
+    console.error("Openverse image search threw:", err);
     return [];
   }
 }
