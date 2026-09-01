@@ -4,7 +4,8 @@
       "Bash(git remote *)",
       "Bash(git push *)",
       "Bash(gh api *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const b=fs.readFileSync\\('src/routes/index.tsx'\\); let cr=0,lf=0,crlf=0; for\\(let i=0;i<b.length;i++\\){ if\\(b[i]===13\\){ if\\(b[i+1]===10\\){crlf++;i++;} else cr++; } else if\\(b[i]===10\\) lf++; } console.log\\({cr,lf,crlf,total:b.length}\\);\")"
     ]
   }
 }
