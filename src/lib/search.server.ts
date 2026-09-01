@@ -36,7 +36,7 @@ export type SearchResponse = {
   query: string;
   page: number;
   results: SearchResult[];
-  provider: "brave" | "serper" | "open";
+  provider: "searxng" | "brave" | "serper" | "open";
   tookMs: number;
   totalApprox: number | null;
   answerBox: AnswerBox | null;
@@ -47,7 +47,7 @@ export type SearchResponse = {
 export type ImageSearchResponse = {
   query: string;
   images: ImageResult[];
-  provider: "serper" | "open";
+  provider: "searxng" | "serper" | "open";
   tookMs: number;
 };
 
@@ -102,6 +102,137 @@ function braveFreshnessFor(timeRange: SearchFilters["timeRange"]): string | unde
     default:
       return undefined;
   }
+}
+
+// SearXNG's time_range only buckets by day/month/year — "week" rounds up to month.
+function searxngTimeRangeFor(timeRange: SearchFilters["timeRange"]): string | undefined {
+  switch (timeRange) {
+    case "day":
+      return "day";
+    case "week":
+    case "month":
+      return "month";
+    case "year":
+      return "year";
+    default:
+      return undefined;
+  }
+}
+
+const SEARXNG_LANGUAGE_BY_REGION: Record<string, string> = {
+  us: "en-US",
+  gb: "en-GB",
+  in: "en-IN",
+  de: "de-DE",
+  fr: "fr-FR",
+  ca: "en-CA",
+  au: "en-AU",
+  jp: "ja-JP",
+  br: "pt-BR",
+};
+
+type SearxngResult = { title?: string; url?: string; content?: string };
+type SearxngInfobox = { infobox?: string; content?: string; urls?: Array<{ url?: string }> };
+type SearxngAnswer = string | { answer?: string };
+type SearxngSearchResponse = {
+  results?: SearxngResult[];
+  infoboxes?: SearxngInfobox[];
+  answers?: SearxngAnswer[];
+  suggestions?: string[];
+  corrections?: string[];
+};
+
+function searxngParams(q: string, filters: SearchFilters, extra?: Record<string, string>) {
+  const params = new URLSearchParams({
+    q,
+    format: "json",
+    safesearch: filters.safeSearch ? "1" : "0",
+    ...extra,
+  });
+  const timeRange = searxngTimeRangeFor(filters.timeRange);
+  if (timeRange) params.set("time_range", timeRange);
+  const language = SEARXNG_LANGUAGE_BY_REGION[filters.region];
+  if (language) params.set("language", language);
+  return params;
+}
+
+type SearxngSearchOutcome = {
+  results: SearchResult[];
+  answerBox: AnswerBox | null;
+  relatedSearches: string[];
+  didYouMean: string | null;
+};
+
+async function searxngSearch(
+  q: string,
+  page: number,
+  filters: SearchFilters,
+  baseUrl: string,
+): Promise<SearxngSearchOutcome> {
+  const params = searxngParams(q, filters, { pageno: String(page) });
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/search?${params}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`SearXNG search failed [${res.status}]: ${body.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as SearxngSearchResponse;
+
+  const results = (data.results ?? []).map((r) => ({
+    title: r.title ?? "",
+    url: r.url ?? "",
+    snippet: r.content ?? "",
+    source: hostOf(r.url ?? ""),
+  }));
+
+  const box = data.infoboxes?.[0];
+  const rawAnswer = data.answers?.[0];
+  const answerText =
+    box?.content ?? (typeof rawAnswer === "string" ? rawAnswer : rawAnswer?.answer) ?? "";
+  const answerUrl = box?.urls?.[0]?.url ?? "";
+  const answerBox: AnswerBox | null = answerText
+    ? { title: box?.infobox ?? q, answer: answerText, source: hostOf(answerUrl), url: answerUrl }
+    : null;
+
+  const relatedSearches = (data.suggestions ?? []).filter(Boolean).slice(0, 8);
+  const didYouMean = data.corrections?.[0] ?? null;
+
+  return { results, answerBox, relatedSearches, didYouMean };
+}
+
+async function searxngImageSearch(
+  q: string,
+  filters: SearchFilters,
+  baseUrl: string,
+): Promise<ImageResult[]> {
+  const params = searxngParams(q, filters, { categories: "images" });
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/search?${params}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`SearXNG image search failed [${res.status}]: ${body.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as {
+    results?: Array<{
+      title?: string;
+      img_src?: string;
+      thumbnail_src?: string;
+      url?: string;
+      source?: string;
+    }>;
+  };
+  return (data.results ?? [])
+    .map((r) => ({
+      title: r.title ?? "",
+      imageUrl: r.img_src ?? "",
+      thumbnailUrl: r.thumbnail_src ?? r.img_src ?? "",
+      link: r.url ?? r.img_src ?? "",
+      source: r.source ?? hostOf(r.url ?? ""),
+    }))
+    .filter((r) => r.imageUrl)
+    .slice(0, 40);
 }
 
 async function braveSearch(
@@ -267,7 +398,9 @@ async function openverseImageSearch(q: string): Promise<ImageResult[]> {
       { headers: { "User-Agent": UA, Accept: "application/json" } },
     );
     if (!res.ok) {
-      console.error(`Openverse image search failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+      console.error(
+        `Openverse image search failed [${res.status}]: ${(await res.text()).slice(0, 300)}`,
+      );
       return [];
     }
     const data = (await res.json()) as {
@@ -383,6 +516,31 @@ export async function runSearch(
   };
   if (!query) return empty;
 
+  const searxngUrl = process.env["SEARXNG_URL"];
+  if (searxngUrl) {
+    try {
+      const { results, answerBox, relatedSearches, didYouMean } = await searxngSearch(
+        query,
+        page,
+        filters,
+        searxngUrl,
+      );
+      return {
+        query,
+        page,
+        results,
+        provider: "searxng",
+        tookMs: Date.now() - started,
+        totalApprox: null,
+        answerBox,
+        relatedSearches,
+        didYouMean,
+      };
+    } catch (err) {
+      console.error("SearXNG provider failed, falling back:", err);
+    }
+  }
+
   const braveKey = process.env["BRAVE_SEARCH_API_KEY"];
   if (braveKey) {
     try {
@@ -460,6 +618,16 @@ export async function runImageSearch(
   const started = Date.now();
   const query = q.trim();
   if (!query) return { query, images: [], provider: "open", tookMs: 0 };
+
+  const searxngUrl = process.env["SEARXNG_URL"];
+  if (searxngUrl) {
+    try {
+      const images = await searxngImageSearch(query, filters, searxngUrl);
+      return { query, images, provider: "searxng", tookMs: Date.now() - started };
+    } catch (err) {
+      console.error("SearXNG image provider failed, falling back:", err);
+    }
+  }
 
   const serperKey = process.env["SERPER_API_KEY"];
   if (serperKey) {
