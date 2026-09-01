@@ -25,3 +25,27 @@ server:
   # the companion Valkey service, if this instance is ever exposed
   # beyond localhost.
   limiter: false
+
+# DuckDuckGo and Startpage block scraping traffic from small self-hosted
+# instances with a CAPTCHA essentially every time — disabling them avoids
+# wasted requests and log noise. Other engines (Brave, Google CSE, Bing,
+# etc.) still cover general + image search.
+engines:
+  - name: duckduckgo
+    disabled: true
+  - name: duckduckgo web
+    disabled: true
+  - name: duckduckgo images
+    disabled: true
+  - name: duckduckgo videos
+    disabled: true
+  - name: duckduckgo news
+    disabled: true
+  - name: duckduckgo weather
+    disabled: true
+  - name: startpage
+    disabled: true
+  - name: startpage news
+    disabled: true
+  - name: startpage images
+    disabled: true
