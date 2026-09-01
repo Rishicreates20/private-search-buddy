@@ -1,0 +1,31 @@
+# Local SearXNG instance used only by Veilo's own backend (search.server.ts).
+# Not exposed publicly — docker-compose.yml binds it to 127.0.0.1 only.
+# Full settings reference: https://docs.searxng.org/admin/settings/
+
+use_default_settings: true
+
+general:
+  instance_name: "veilo-searxng"
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json
+
+server:
+  # Copy this file to settings.yml and replace with a real random value,
+  # e.g. `openssl rand -hex 32`. settings.yml is gitignored on purpose —
+  # never commit a real secret_key.
+  secret_key: "replace-with-a-random-secret-key"
+  # Disabled because this instance is private (called only by our own
+  # backend, never by a browser) — the limiter's bot-detection would
+  # otherwise block our own JSON API requests, same as it blocks
+  # scripted access to the public instances. Only re-enable this, with
+  # the companion Valkey service, if this instance is ever exposed
+  # beyond localhost.
+  limiter: false
+  # Images are proxied through this instance rather than fetched
+  # directly by the visitor's browser, consistent with Veilo's
+  # no-third-party-request design.
+  image_proxy: true

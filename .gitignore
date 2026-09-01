@@ -24,6 +24,9 @@ dist-ssr
 .env
 .env.local
 
+# Local SearXNG instance config (contains a real secret_key)
+searxng/settings.yml
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
