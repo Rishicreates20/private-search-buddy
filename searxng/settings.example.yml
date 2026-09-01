@@ -25,7 +25,3 @@ server:
   # the companion Valkey service, if this instance is ever exposed
   # beyond localhost.
   limiter: false
-  # Images are proxied through this instance rather than fetched
-  # directly by the visitor's browser, consistent with Veilo's
-  # no-third-party-request design.
-  image_proxy: true
