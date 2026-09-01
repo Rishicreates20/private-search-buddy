@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git remote *)",
       "Bash(git push *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

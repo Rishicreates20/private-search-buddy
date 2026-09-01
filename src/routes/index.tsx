@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EyeOff, ShieldCheck, Zap } from "lucide-react";
 import { SearchBar } from "@/components/SearchBar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,13 +39,16 @@ function Index() {
         <span className="font-display text-lg font-semibold tracking-tight text-foreground">
           veilo<span className="text-accent">.</span>
         </span>
-        <Link
-          to="/search"
-          search={{ q: "privacy tools", page: 1 }}
-          className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground sm:text-sm"
-        >
-          Try a search
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/search"
+            search={{ q: "privacy tools", page: 1 }}
+            className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-ring hover:text-foreground sm:text-sm"
+          >
+            Try a search
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
 
       <section className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-5 pb-24 pt-10 text-center sm:px-8">
