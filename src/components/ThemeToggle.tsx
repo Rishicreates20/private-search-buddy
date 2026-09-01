@@ -12,7 +12,11 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={
-        mounted ? (theme === "dark" ? "Switch to light mode" : "Switch to dark mode") : "Toggle theme"
+        mounted
+          ? theme === "dark"
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+          : "Toggle theme"
       }
       className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
     >

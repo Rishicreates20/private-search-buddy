@@ -177,7 +177,13 @@ async function serperSearch(
   }
   const data = (await res.json()) as {
     organic?: Array<{ title?: string; link?: string; snippet?: string }>;
-    answerBox?: { title?: string; answer?: string; snippet?: string; link?: string; source?: string };
+    answerBox?: {
+      title?: string;
+      answer?: string;
+      snippet?: string;
+      link?: string;
+      source?: string;
+    };
     relatedSearches?: Array<{ query?: string }>;
     searchParameters?: { q?: string };
   };
@@ -191,14 +197,15 @@ async function serperSearch(
 
   const box = data.answerBox;
   const answerText = box?.answer ?? box?.snippet ?? "";
-  const answerBox: AnswerBox | null = box && answerText
-    ? {
-        title: box.title ?? q,
-        answer: answerText,
-        source: box.source ?? hostOf(box.link ?? ""),
-        url: box.link ?? "",
-      }
-    : null;
+  const answerBox: AnswerBox | null =
+    box && answerText
+      ? {
+          title: box.title ?? q,
+          answer: answerText,
+          source: box.source ?? hostOf(box.link ?? ""),
+          url: box.link ?? "",
+        }
+      : null;
 
   const relatedSearches = (data.relatedSearches ?? [])
     .map((r) => r.query ?? "")
@@ -468,10 +475,9 @@ export async function runSuggest(q: string): Promise<string[]> {
   const query = q.trim();
   if (!query) return [];
   try {
-    const res = await fetch(
-      `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`,
-      { headers: { "User-Agent": UA, Accept: "application/json" } },
-    );
+    const res = await fetch(`https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as unknown;
     if (Array.isArray(data) && Array.isArray(data[1])) {
