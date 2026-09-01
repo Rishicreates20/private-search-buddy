@@ -9,7 +9,7 @@ export type SearchResponse = {
   query: string;
   page: number;
   results: SearchResult[];
-  provider: "brave" | "open";
+  provider: "brave" | "serper" | "open";
   tookMs: number;
   totalApprox: number | null;
 };
@@ -59,6 +59,30 @@ async function braveSearch(q: string, page: number, key: string): Promise<Search
     url: r.url ?? "",
     snippet: stripTags(r.description ?? ""),
     source: hostOf(r.url ?? ""),
+  }));
+}
+
+async function serperSearch(q: string, page: number, key: string): Promise<SearchResult[]> {
+  const res = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": key,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q, page }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Serper search failed [${res.status}]: ${body.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as {
+    organic?: Array<{ title?: string; link?: string; snippet?: string }>;
+  };
+  return (data.organic ?? []).map((r) => ({
+    title: r.title ?? "",
+    url: r.link ?? "",
+    snippet: r.snippet ?? "",
+    source: hostOf(r.link ?? ""),
   }));
 }
 
@@ -151,7 +175,24 @@ export async function runSearch(q: string, page: number): Promise<SearchResponse
         totalApprox: null,
       };
     } catch (err) {
-      console.error("Brave provider failed, falling back to open sources:", err);
+      console.error("Brave provider failed, falling back:", err);
+    }
+  }
+
+  const serperKey = process.env["SERPER_API_KEY"];
+  if (serperKey) {
+    try {
+      const results = await serperSearch(query, page, serperKey);
+      return {
+        query,
+        page,
+        results,
+        provider: "serper",
+        tookMs: Date.now() - started,
+        totalApprox: null,
+      };
+    } catch (err) {
+      console.error("Serper provider failed, falling back to open sources:", err);
     }
   }
 
